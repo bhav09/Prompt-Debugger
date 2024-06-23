@@ -1,11 +1,9 @@
-import google.generativeai as genai
-from google.generativeai.types.generation_types import StopCandidateException
-
 # conda activate /Users/bhavishyapandit/VSCProjects/google-ai-hackathon24/.conda
 import streamlit as st
-from vertexai import generative_models
 import vertexai
-from vertexai.generative_models import GenerativeModel
+from vertexai.generative_models import GenerativeModel, Part, FinishReason
+import vertexai.preview.generative_models as generative_models
+from google.generativeai.types.generation_types import StopCandidateException
 import re
 import json
 import traceback
@@ -19,7 +17,7 @@ def count_tokens(prompt):
     num_tokens = len(encoding.encode(prompt))
     return num_tokens
 
-def generate_response(prompt, temperature=0, safety_setting='BLOCK_MEDIUM_AND_ABOVE'):
+def generate_response(prompt, temperature=0):
     """
     Generates a resopnse by hitting to Gemini
 
@@ -30,45 +28,20 @@ def generate_response(prompt, temperature=0, safety_setting='BLOCK_MEDIUM_AND_AB
     Returns:
     - dict: Data dictionary containing the description of the table, each column, and its data type.
     """
+
     generation_config = {
-      "temperature": temperature,
-      "top_p": 1,
-      "top_k": 1,
+    "max_output_tokens": 8192,
+    "temperature": 1,
+    "top_p": 0.95,
     }
-    # safety_settings = [
-    #     {
-    #     "category": "HARM_CATEGORY_HARASSMENT",
-    #     "threshold": safety_setting
-    #     },
-    #     {
-    #     "category": "HARM_CATEGORY_HATE_SPEECH",
-    #     "threshold": safety_setting
-    #     },
-    #     {
-    #     "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-    #     "threshold": safety_setting
-    #     },
-    #     {
-    #     "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-    #     "threshold": safety_setting
-    #     },
-    # ]
-    # genai.configure(api_key=gemini_token['key'])
-    # model = genai.GenerativeModel(model_name="gemini-1.0-pro",
-    #                                 generation_config=generation_config,
-    #                                 safety_settings=safety_settings)
-    # convo = model.start_chat(history=[])
-    # convo.send_message(prompt)
-    # safety_config = [
-    # generative_models.SafetySetting(
-    #     category=generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-    #     threshold=generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    # ),
-    # generative_models.SafetySetting(
-    #     category=generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT,
-    #     threshold=generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-    # ),
-    # ]
+
+    safety_settings = {
+        generative_models.HarmCategory.HARM_CATEGORY_HATE_SPEECH: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        generative_models.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        generative_models.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        generative_models.HarmCategory.HARM_CATEGORY_HARASSMENT: generative_models.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    }
+    
     project_id = creds['project_id']
     vertexai.init(project=project_id, location="us-central1")
     model = GenerativeModel(model_name="gemini-1.0-pro")
@@ -78,8 +51,9 @@ def generate_response(prompt, temperature=0, safety_setting='BLOCK_MEDIUM_AND_AB
     )
     response = model.generate_content(
         contents=prompt,
-        # generation_config=generation_config,
-        # safety_settings=safety_config,
+        generation_config=generation_config,
+        safety_settings=safety_settings,
+        stream=True,
     )
     return re.sub(r"\*\*([^*]+)\*\*", r"\1", response.text)
     # return re.sub(r"\*\*([^*]+)\*\*", r"\1", convo.last.text)
