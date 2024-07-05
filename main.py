@@ -1,15 +1,16 @@
-# conda activate /Users/bhavishyapandit/VSCProjects/google-ai-hackathon24/.conda
-
 import streamlit as st
+from google.cloud import bigquery
+import pandas as pd
 from utils.api import generate_response, count_tokens, auto_debugger, generate_good_prompt
 from google.generativeai.types.generation_types import StopCandidateException
 from utils.streamlit_helpers import display_colored_text, setup_background, copy_url, get_client_ip, generate_session_id
+import json
 import streamlit.components.v1 as components
 from streamlit_feedback import streamlit_feedback
 from datetime import datetime, timedelta
+import uuid
 import time
-import json
-import openpyxl
+import logging
 
 def copy_link():
     st.session_state.copy_button_clicked = True
@@ -42,53 +43,58 @@ Ready to turbocharge your prompts? Let's dive in! 💪
 
 @st.experimental_dialog("Share Your Exclusive Find 🕵️‍♂️")
 def share_app():
-    if st.session_state.share_button:
-        if 'copy_button_clicked' not in st.session_state:
-            st.session_state.copy_button_clicked = False
-        col1, col2, col3 = st.columns([1,1,1])
-        app_url = 'streamlit.app.com'
-        with col1:
-            url = 'https://www.linkedin.com/sharing/share-offsite/?url={app_url}'
-            st.link_button('💼 LinkedIn', url)
-        with col2:
-            url = f'https://x.com/intent/post?original_referer=http%3A%2F%2Flocalhost%3A8502%2F&ref_src=twsrc%5Etfw%7Ctwcamp%5Ebuttonembed%7Ctwterm%5Eshare%7Ctwgr%5E&text=Automate+Prompt+Engineering+using+Prompt+Debugger+powered+by+Google+Cloud%21+%F0%9F%8E%88&url=%7B{app_url}%7D'
-            st.link_button('𝕏 Twitter', url)
-        with col3:
-            placeholder = st.empty()
-            # placeholder.button('📄 Copy Link', on_click=copy_url)
-            print(st.session_state)
-            if st.session_state.copy_button_clicked:
-                placeholder.button("Copied", disabled=True)
-            else:
-                placeholder.button('📄 Copy Link', on_click=copy_url)
-            logging.info('Error raised')
+    # if st.session_state.share_button:
+    if 'copy_button_clicked' not in st.session_state:
+        st.session_state.copy_button_clicked = False
+    col1, col2, col3 = st.columns([1,1,1])
+    app_url = 'streamlit.app.com'
+    with col1:
+        url = 'https://www.linkedin.com/sharing/share-offsite/?url={app_url}'
+        st.link_button('💼 LinkedIn', url)
+    with col2:
+        url = f'https://x.com/intent/post?original_referer=http%3A%2F%2Flocalhost%3A8502%2F&ref_src=twsrc%5Etfw%7Ctwcamp%5Ebuttonembed%7Ctwterm%5Eshare%7Ctwgr%5E&text=Automate+Prompt+Engineering+using+Prompt+Debugger+powered+by+Google+Cloud%21+%F0%9F%8E%88&url=%7B{app_url}%7D'
+        st.link_button('𝕏 Twitter', url)
+    with col3:
+        placeholder = st.empty()
+        print(st.session_state)
+        if st.session_state.copy_button_clicked:
+            placeholder.button("Copied", disabled=True)
+        else:
+            placeholder.button('📄 Copy Link', on_click=copy_url)
+        logging.info('Error raised')
+    text = f'''Did you know you could automate Prompt Engineering? 🤔
+Here's an app - "Prompt Debugger" that does it for you! 
 
-def create_workbook():
-  wb = openpyxl.Workbook()
-  sheet = wb.active
-  sheet.append(["session_id" ,"vote", "comment"])
-  return wb
+Visit this free to use tool and boost your productivity NOW! 🚀
+Link to the app: {app_url}
+    '''
+    st.text_area("Sample Text", text, height=400, disabled=False)
 
 def _submit_feedback(user_response, emoji=None):
-    print(user_response, emoji)
-    try:
-        wb = openpyxl.load_workbook("feedback.xlsx")
-    except FileNotFoundError:
-        wb = create_workbook()
-
-    # Add entry based on feedback type
-    sheet = wb.active
     feedback_value = 1 if user_response['score'] == '👍' else 0
     user_feedback = user_response['text']
-    sheet.append([session_id, feedback_value, user_feedback])
+        
+    new_data = [float(session_id), feedback_value, user_feedback]
+    df = pd.DataFrame([new_data], columns=["session_id", "vote", "comment"])
+        
+    # Define the destination table reference
+    destination_table = client.dataset("prompt_debugger").table("user_feedback")
 
-    # Save the workbook
-    wb.save("feedback.xlsx")
+    # Set write disposition to append
+    job_config = bigquery.LoadJobConfig(write_disposition="WRITE_APPEND")
+
+    # Load the DataFrame to the table
+    load_job = client.load_table_from_dataframe(df, destination_table, job_config=job_config)
+
+    load_job.result()
     st.success("Your feedback has been submitted!")
 
 # Main Code
 if 'session_id' not in st.session_state:
     make_new_session()
+
+# Initialising client
+client = bigquery.Client(project='fleet-purpose-427308-k1')
 
 # Check if the session is older than 5 minutes
 session_age = datetime.now() - st.session_state.created_at
@@ -109,8 +115,8 @@ with open('credentials.json', 'r') as file:
 if not st.session_state.welcome_shown:
     welcome_message()
     st.session_state.welcome_shown = True
+    st.session_state.share_button = True
 
-st.session_state.share_button = True
 st.title('Prompt Debugger')  
 _, col_share_button = st.columns([0.7, 0.15])
 col_share_button.button("Share app 🚀", key="share", on_click=share_app)
@@ -123,14 +129,20 @@ st.markdown(
             top: -10px;
         }
 
-    .st-at.st-ai.st-au.st-av.st-aw.st-ax.st-ay.st-az.st-b0.st-b1.st-b2.st-b3.st-b4 {
+    .st-at.st-ai.st-au.st-av.st-aw.st-ax.st-ay.st-az.st-b0.st-b1.st-b2.st-b3.st-b4{
         position: relative;
         top: -80px;
     }
     .st-av.st-bv.st-co.st-bg.st-bh.st-be {
         position: relative;
-        top: -70px;  /* Adjust as needed to move the elements up */
+        top: -65px;  /* Adjust as needed to move the elements up */
     }
+    .MuiStack-root.css-16ogmd7
+    {
+        position: relative;
+        top: -65px;
+    }
+    
     </style>
     """,
     unsafe_allow_html=True
