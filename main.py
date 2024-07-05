@@ -46,13 +46,20 @@ def share_app():
     # if st.session_state.share_button:
     if 'copy_button_clicked' not in st.session_state:
         st.session_state.copy_button_clicked = False
-    col1, col2, col3 = st.columns([1,1,1])
-    app_url = 'streamlit.app.com'
+    app_url = 'https://prompt-debugger-lbgzisv3qa-uc.a.run.app'
+    text = f'''Did you know you could automate Prompt Engineering? 🤔
+Here's an app - "Prompt Debugger" that does it for you! 
+
+Visit this free to use tool and boost your productivity NOW! 🚀
+Link to the app: {app_url}
+    '''
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
     with col1:
         url = 'https://www.linkedin.com/sharing/share-offsite/?url={app_url}'
         st.link_button('💼 LinkedIn', url)
     with col2:
-        url = f'https://x.com/intent/post?original_referer=http%3A%2F%2Flocalhost%3A8502%2F&ref_src=twsrc%5Etfw%7Ctwcamp%5Ebuttonembed%7Ctwterm%5Eshare%7Ctwgr%5E&text=Automate+Prompt+Engineering+using+Prompt+Debugger+powered+by+Google+Cloud%21+%F0%9F%8E%88&url=%7B{app_url}%7D'
+        url = f'https://x.com/intent/post?original_referer=http%3A%2F%2Flocalhost%3A8502%2F&ref_src=twsrc%5Etfw%7Ctwcamp%5Ebuttonembed%7Ctwterm%5Eshare%7Ctwgr%5E&text={text}+%F0%9F%8E%88&url=%7B{app_url}%7D'
         st.link_button('𝕏 Twitter', url)
     with col3:
         placeholder = st.empty()
@@ -61,14 +68,7 @@ def share_app():
             placeholder.button("Copied", disabled=True)
         else:
             placeholder.button('📄 Copy Link', on_click=copy_url)
-        logging.info('Error raised')
-    text = f'''Did you know you could automate Prompt Engineering? 🤔
-Here's an app - "Prompt Debugger" that does it for you! 
-
-Visit this free to use tool and boost your productivity NOW! 🚀
-Link to the app: {app_url}
-    '''
-    st.text_area("Sample Text", text, height=400, disabled=False)
+    st.text_area("Sample Text", text, height=350)
 
 def _submit_feedback(user_response, emoji=None):
     feedback_value = 1 if user_response['score'] == '👍' else 0
